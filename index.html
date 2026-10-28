@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeoBank - Finanzas Personales</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        
+        /* Efecto Tarjeta de Crédito */
+        .credit-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%), linear-gradient(45deg, #4f46e5 0%, #06b6d4 100%);
+            box-shadow: 0 8px 32px 0 rgba(79, 70, 229, 0.37);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        /* Control limpio de vistas SPA */
+        .view-section { display: none; }
+        .view-section.active { display: block; animation: fadeIn 0.3s ease forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Estilo indicador navegación activa */
+        .nav-btn { color: #64748b; transition: color 0.2s; position: relative; }
+        .nav-btn:hover { color: #cbd5e1; }
+        .nav-btn.active { color: #22d3ee; }
+        .nav-btn.active::after {
+            content: ''; position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%);
+            width: 16px; height: 3px; background-color: #22d3ee; border-radius: 4px;
+        }
+
+        dialog::backdrop { background: rgba(2, 6, 23, 0.8); backdrop-filter: blur(5px); }
+
+        /* Toggle Switch CSS */
+        .toggle-checkbox:checked { right: 0; border-color: #22d3ee; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #22d3ee; }
+        .toggle-checkbox { right: 0; z-index: 1; border-color: #475569; transition: all 0.3s; }
+        .toggle-label { width: 3rem; height: 1.5rem; background-color: #334155; transition: all 0.3s; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen flex flex-col md:flex-row select-none">
+
+    <!-- Navegación Lateral / Inferior -->
+    <nav class="fixed bottom-0 w-full md:w-24 md:h-screen md:relative bg-slate-900 border-t md:border-t-0 md:border-r border-slate-800 z-50 flex md:flex-col justify-around md:justify-start items-center p-4 md:py-8 md:gap-8">
+        <div class="hidden md:block w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-cyan-400 mb-8 shadow-lg shadow-indigo-500/30"></div>
+        
+        <button class="nav-btn active flex flex-col items-center gap-1 cursor-pointer" data-target="view-home">
+            <i class="fa-solid fa-house text-xl"></i>
+            <span class="text-[10px] font-medium">Inicio</span>
+        </button>
+        <button class="nav-btn flex flex-col items-center gap-1 cursor-pointer" data-target="view-analytics">
+            <i class="fa-solid fa-chart-pie text-xl"></i>
+            <span class="text-[10px] font-medium">Análisis</span>
+        </button>
+        <button class="nav-btn flex flex-col items-center gap-1 cursor-pointer" data-target="view-vaults">
+            <i class="fa-solid fa-bullseye text-xl"></i>
+            <span class="text-[10px] font-medium">Ahorros</span>
+        </button>
+        <button class="nav-btn flex flex-col items-center gap-1 cursor-pointer" data-target="view-invest">
+            <i class="fa-solid fa-arrow-trend-up text-xl"></i>
+            <span class="text-[10px] font-medium">Invertir</span>
+        </button>
+    </nav>
+
+    <!-- Contenido Principal -->
+    <main class="flex-1 p-4 md:p-8 lg:px-12 pb-24 md:pb-8 w-full max-w-7xl mx-auto overflow-y-auto">
+        
+        <!-- ================= VISTA: INICIO ================= -->
+        <section id="view-home" class="view-section active space-y-8">
+            <header class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-white tracking-tight">Panel General</h1>
+                    <p class="text-slate-400 text-sm">Controla tus ingresos y gastos diarios</p>
+                </div>
+                <div class="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center border border-slate-800 text-slate-400">
+                    <i class="fa-regular fa-bell"></i>
+                </div>
+            </header>
+
+            <!-- Widget Salud Financiera Rápida (NUEVO) -->
+            <div class="bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl p-5 border border-slate-700/50 shadow-lg flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="h-12 w-12 rounded-full bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-heart-pulse"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-white text-sm">Termómetro Financiero (50/30/20)</h3>
+                        <p class="text-xs text-slate-400">Distribución ideal de tus ingresos este mes.</p>
+                    </div>
+                </div>
+                <div class="w-full md:w-1/2 flex gap-2 h-3 rounded-full overflow-hidden bg-slate-950">
+                    <div id="bar-needs" class="bg-rose-400 h-full" style="width: 0%" title="Necesidades"></div>
+                    <div id="bar-wants" class="bg-amber-400 h-full" style="width: 0%" title="Ocio y Deseos"></div>
+                    <div id="bar-savings" class="bg-emerald-400 h-full" style="width: 0%" title="Ahorro e Inversión"></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Tarjeta Virtual -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="credit-card rounded-3xl p-6 relative overflow-hidden h-52 flex flex-col justify-between">
+                        <div class="absolute top-0 right-0 p-6 opacity-20"><i class="fa-brands fa-cc-visa text-6xl"></i></div>
+                        <div class="flex justify-between items-start z-10">
+                            <span class="font-medium text-indigo-100 tracking-widest text-sm">VIRTUAL ACCOUNT</span>
+                            <i class="fa-solid fa-wifi rotate-90 text-xl text-white"></i>
+                        </div>
+                        <div class="z-10">
+                            <p class="text-indigo-100 text-sm mb-1">Saldo Disponible</p>
+                            <h2 id="card-balance" class="text-4xl font-bold text-white tracking-tight">0,00 €</h2>
+                        </div>
+                        <div class="flex justify-between items-end z-10">
+                            <p class="text-sm font-medium text-white tracking-widest">**** **** **** 2026</p>
+                            <p class="text-xs text-indigo-100">12/30</p>
+                        </div>
+                    </div>
+
+                    <!-- Botones de Acción Rápida -->
+                    <div class="flex gap-4">
+                        <button id="open-tx-modal" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl py-3.5 text-sm font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-indigo-600/20">
+                            <i class="fa-solid fa-plus text-cyan-300"></i> Nuevo Movimiento
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Actividad Reciente -->
+                <div class="lg:col-span-2 bg-slate-900 rounded-3xl p-6 border border-slate-800/80 shadow-xl flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="font-semibold text-lg text-white">Últimos Movimientos</h3>
+                            <button id="go-to-analytics" class="text-sm text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer">Ver historial</button>
+                        </div>
+                        <div id="home-transactions-list" class="space-y-3">
+                            <!-- Generado dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= VISTA: ANALÍTICAS ================= -->
+        <section id="view-analytics" class="view-section space-y-8">
+            <header>
+                <h1 class="text-2xl font-bold text-white tracking-tight">Análisis Financiero</h1>
+                <p class="text-slate-400 text-sm">Audita tus hábitos de consumo</p>
+            </header>
+            
+            <div class="bg-slate-900 rounded-3xl p-6 border border-slate-800/80 flex flex-col md:flex-row items-center justify-center gap-6 h-auto md:h-80 shadow-xl">
+                <div class="w-full md:w-1/2 h-64 relative flex justify-center items-center">
+                    <canvas id="expensesChart"></canvas>
+                </div>
+                <div class="w-full md:w-1/2 flex flex-col justify-center text-sm text-slate-400 space-y-4">
+                    <div>
+                        <h4 class="font-medium text-white mb-1"><i class="fa-solid fa-scale-balanced text-indigo-400 mr-2"></i>Regla 50/30/20</h4>
+                        <p class="text-xs">Un presupuesto saludable destina 50% a necesidades, 30% a ocio y 20% a futuro (ahorro/inversión).</p>
+                    </div>
+                    <ul class="space-y-2 text-xs" id="rule-50-30-20-list">
+                        <!-- Generado dinámicamente -->
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="bg-slate-900 rounded-3xl p-6 border border-slate-800/80 shadow-xl">
+                <h3 class="font-semibold text-lg text-white mb-4">Historial Completo</h3>
+                <div id="full-transactions-list" class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                    <!-- Generado dinámicamente -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= VISTA: AHORROS ================= -->
+        <section id="view-vaults" class="view-section space-y-8">
+            <header class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-white tracking-tight">Cajas de Ahorro</h1>
+                    <p class="text-slate-400 text-sm">Alcanza tus objetivos financieros</p>
+                </div>
+                <button id="open-vault-modal" class="bg-indigo-600 hover:bg-indigo-500 text-white rounded-full h-11 w-11 flex items-center justify-center transition-colors shadow-lg shadow-indigo-600/30 cursor-pointer">
+                    <i class="fa-solid fa-plus text-lg"></i>
+                </button>
+            </header>
+
+            <!-- Panel de Micro-Ahorro Automático (NUEVO) -->
+            <div class="bg-slate-900 border border-cyan-900/50 rounded-2xl p-5 shadow-lg flex items-center justify-between">
+                <div>
+                    <h3 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-coins text-cyan-400"></i> Redondeo Automático</h3>
+                    <p class="text-xs text-slate-400 mt-1">Ahorra los céntimos sobrantes de cada compra automáticamente en tu primera caja.</p>
+                </div>
+                <div class="relative inline-block w-12 align-middle select-none transition duration-200 ease-in">
+                    <input type="checkbox" name="toggle-roundup" id="toggle-roundup" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                    <label for="toggle-roundup" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                </div>
+            </div>
+
+            <div id="vaults-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Generado dinámicamente -->
+            </div>
+        </section>
+
+        <!-- ================= VISTA: INVERSIONES ================= -->
+        <section id="view-invest" class="view-section space-y-8">
+            <!-- (El código de Inversiones previo se mantiene intacto) -->
+            <header class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-white tracking-tight">Inversiones y Mercados</h1>
+                    <p class="text-slate-400 text-sm">Gestiona y simula tu cartera de activos</p>
+                </div>
+                <button onclick="App.simulateMarket()" class="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-4 py-2.5 text-sm font-medium transition-colors shadow-lg shadow-indigo-600/30 flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-bolt"></i> <span class="hidden md:inline">Simular Mercado</span>
+                </button>
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-gradient-to-r from-slate-900 to-indigo-950 rounded-3xl p-6 border border-indigo-900/50 shadow-xl flex flex-col justify-center">
+                    <p class="text-indigo-200 text-sm mb-1">Valor Total del Portafolio</p>
+                    <div class="flex items-end gap-4 mb-5">
+                        <h2 id="invest-total" class="text-4xl font-bold text-white">0,00 €</h2>
+                    </div>
+                    <div class="flex justify-between items-center border-t border-indigo-500/30 pt-4">
+                        <div>
+                            <p class="text-xs text-indigo-300 mb-0.5">Capital Invertido</p>
+                            <p id="invest-capital" class="font-medium text-white">0,00 €</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-indigo-300 mb-0.5">Beneficio Global</p>
+                            <p id="invest-profit" class="font-medium text-emerald-400">0,00 € (0.00%)</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-slate-900 rounded-3xl p-4 border border-slate-800/80 shadow-xl flex justify-center items-center h-48 md:h-full relative">
+                    <canvas id="portfolioChart"></canvas>
+                </div>
+            </div>
+
+            <h3 class="font-semibold text-lg text-white mt-8 mb-4">Mercado de Activos</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5" id="invest-markets">
+                <!-- Generado dinámicamente -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ================= MODALES ================= -->
+    
+    <!-- Modal: Nuevo Movimiento -->
+    <dialog id="transaction-modal" class="bg-slate-900 text-white rounded-3xl p-0 shadow-2xl border border-slate-800 w-[90%] max-w-md m-auto overflow-hidden">
+        <div class="p-6 md:p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">Registro de Operación</h3>
+                <button id="close-tx-modal" class="text-slate-400 hover:text-white cursor-pointer"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+
+            <!-- Etiquetas de Acción Rápida (NUEVO) -->
+            <div class="mb-5">
+                <p class="text-xs text-slate-400 mb-2 font-medium">Rellenado Rápido:</p>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" class="quick-fill-btn bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded-lg border border-slate-700 transition-colors" data-type="income" data-concept="Venta Ropa" data-category="Ingreso" data-amount="15.00">📦 Venta Ropa</button>
+                    <button type="button" class="quick-fill-btn bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded-lg border border-slate-700 transition-colors" data-type="expense" data-concept="Transporte Público" data-category="Transporte" data-amount="1.50">🚌 Transporte</button>
+                    <button type="button" class="quick-fill-btn bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded-lg border border-slate-700 transition-colors" data-type="expense" data-concept="Material Escolar" data-category="Educación" data-amount="5.00">📚 Estudios</button>
+                </div>
+            </div>
+
+            <form id="form-transaction" class="space-y-4">
+                <div class="grid grid-cols-2 gap-2 p-1 bg-slate-950 rounded-xl border border-slate-800">
+                    <label class="cursor-pointer text-center">
+                        <input type="radio" name="tx-type" value="expense" class="peer sr-only" checked>
+                        <div class="py-2 rounded-lg peer-checked:bg-slate-800 peer-checked:text-white text-slate-400 text-sm font-medium transition-colors">Gasto</div>
+                    </label>
+                    <label class="cursor-pointer text-center">
+                        <input type="radio" name="tx-type" value="income" class="peer sr-only">
+                        <div class="py-2 rounded-lg peer-checked:bg-slate-800 peer-checked:text-white text-slate-400 text-sm font-medium transition-colors">Ingreso</div>
+                    </label>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Concepto</label>
+                    <input type="text" id="tx-concept" required placeholder="Ej. Supermercado, Nómina..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:ring-1 focus:ring-cyan-400 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Importe (€)</label>
+                    <input type="number" id="tx-amount" required min="0.01" step="0.01" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:ring-1 focus:ring-cyan-400 outline-none text-xl font-bold">
+                </div>
+                <div id="tx-category-wrapper">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Categoría de Gasto</label>
+                    <select id="tx-category" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:ring-1 focus:ring-cyan-400 outline-none cursor-pointer appearance-none">
+                        <optgroup label="Necesidades (50%)">
+                            <option value="Alimentación">Alimentación</option>
+                            <option value="Hogar y Facturas">Hogar y Facturas</option>
+                            <option value="Transporte">Transporte</option>
+                            <option value="Educación">Educación y Salud</option>
+                        </optgroup>
+                        <optgroup label="Ocio y Deseos (30%)">
+                            <option value="Ocio">Ocio y Restaurantes</option>
+                            <option value="Tecnología">Tecnología y Compras</option>
+                            <option value="Otros">Otros Caprichos</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl py-3.5 transition-colors shadow-lg shadow-indigo-600/30 mt-4 cursor-pointer">
+                    Guardar Operación
+                </button>
+            </form>
+        </div>
+    </dialog>
+
+    <!-- Modales Restantes (Cajas, Fondos, Inversión) mantenidos igual -->
+    <dialog id="vault-modal" class="bg-slate-900 text-white rounded-3xl p-0 shadow-2xl border border-slate-800 w-[90%] max-w-md m-auto">
+        <div class="p-6 md:p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">Nueva Caja de Ahorro</h3>
+                <button id="close-vault-modal" class="text-slate-400 hover:text-white cursor-pointer"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <form id="form-vault" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Nombre del Objetivo</label>
+                    <input type="text" id="v-name" required placeholder="Ej. Viaje, Nuevo Ordenador..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:ring-1 focus:ring-cyan-400 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Meta Económica (€)</label>
+                    <input type="number" id="v-target" required min="1" placeholder="Ej. 500" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:ring-1 focus:ring-cyan-400 outline-none">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl py-3.5 transition-colors mt-2 cursor-pointer shadow-lg shadow-indigo-600/30">Crear Caja</button>
+            </form>
+        </div>
+    </dialog>
+
+    <dialog id="add-funds-modal" class="bg-slate-900 text-white rounded-3xl p-0 shadow-2xl border border-slate-800 w-[90%] max-w-sm m-auto">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold">Aportar a la Meta</h3>
+                <button id="close-funds-modal" class="text-slate-400 hover:text-white cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-add-funds" class="space-y-4">
+                <input type="hidden" id="fund-vault-id">
+                <p class="text-xs text-slate-400">Transfiere fondos desde tu saldo principal hacia este objetivo de ahorro.</p>
+                <div>
+                    <input type="number" id="fund-amount" required min="0.01" step="0.01" placeholder="Cantidad (€)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-1 focus:ring-cyan-400">
+                </div>
+                <button type="submit" class="w-full bg-cyan-400 text-slate-950 font-semibold rounded-xl py-3 transition-colors mt-2 hover:bg-cyan-300 cursor-pointer">Transferir Fondos</button>
+            </form>
+        </div>
+    </dialog>
+
+    <dialog id="invest-modal" class="bg-slate-900 text-white rounded-3xl p-0 shadow-2xl border border-slate-800 w-[90%] max-w-sm m-auto">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold" id="invest-modal-title">Operar</h3>
+                <button id="close-invest-modal" class="text-slate-400 hover:text-white cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-invest" class="space-y-4">
+                <input type="hidden" id="inv-asset-id">
+                <input type="hidden" id="inv-operation">
+                <p class="text-xs text-slate-400" id="invest-modal-desc"></p>
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center mb-2">
+                    <span class="text-sm text-slate-400">Saldo Disponible:</span>
+                    <span class="font-bold text-white" id="invest-modal-balance">0,00 €</span>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Importe a operar (€)</label>
+                    <input type="number" id="inv-amount" required min="0.01" step="0.01" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-1 focus:ring-cyan-400 text-lg font-bold">
+                </div>
+                <button type="submit" id="invest-submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl py-3 transition-colors mt-2 cursor-pointer shadow-lg shadow-indigo-600/30">Confirmar</button>
+            </form>
+        </div>
+    </dialog>
+
+    <script>
+        // --- MOTOR DE DATOS Y ESTADO ---
+        const generateSafeID = () => (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2);
+        
+        const safeParse = (key, fallback) => {
+            try { return JSON.parse(localStorage.getItem(key)) || fallback; } 
+            catch (e) { return fallback; }
+        };
+
+        const State = {
+            settings: safeParse('nb_settings', { roundupEnabled: false }),
+            transactions: safeParse('nb_tx', []),
+            vaults: safeParse('nb_vaults', []),
+            investments: safeParse('nb_invest', [
+                { id: 'i1', name: 'S&P 500 ETF', symbol: 'SPY', invested: 0, current: 0, icon: 'fa-solid fa-chart-line', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+                { id: 'i2', name: 'Bitcoin', symbol: 'BTC', invested: 0, current: 0, icon: 'fa-brands fa-bitcoin', color: 'text-orange-400', bg: 'bg-orange-500/10' },
+                { id: 'i3', name: 'Apple Inc.', symbol: 'AAPL', invested: 0, current: 0, icon: 'fa-brands fa-apple', color: 'text-slate-300', bg: 'bg-slate-700/50' },
+                { id: 'i4', name: 'Bonos del Tesoro', symbol: 'BND', invested: 0, current: 0, icon: 'fa-solid fa-landmark', color: 'text-blue-400', bg: 'bg-blue-500/10' },
+                { id: 'i5', name: 'Oro (Gold ETF)', symbol: 'GLD', invested: 0, current: 0, icon: 'fa-solid fa-coins', color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
+                { id: 'i6', name: 'Ethereum', symbol: 'ETH', invested: 0, current: 0, icon: 'fa-brands fa-ethereum', color: 'text-purple-400', bg: 'bg-purple-500/10' }
+            ]),
+            chartInstance: null,
+            investChartInstance: null,
+
+            save() {
+                localStorage.setItem('nb_settings', JSON.stringify(this.settings));
+                localStorage.setItem('nb_tx', JSON.stringify(this.transactions));
+                localStorage.setItem('nb_vaults', JSON.stringify(this.vaults));
+                localStorage.setItem('nb_invest', JSON.stringify(this.investments));
+                App.updateUI();
+            },
+
+            getTotals() {
+                let income = 0, expense = 0;
+                this.transactions.forEach(t => t.type === 'income' ? income += t.amount : expense += t.amount);
+                return { balance: income - expense, income, expense };
+            }
+        };
+
+        // --- RENDERIZADO VISUAL ---
+        const UI = {
+            formatCur: (val) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(val),
+
+            renderAll() {
+                document.getElementById('card-balance').textContent = this.formatCur(State.getTotals().balance);
+                this.renderTransactions();
+                this.renderVaults();
+                this.renderInvestments();
+                this.renderFinancialHealth();
+                
+                // Set toggle status
+                document.getElementById('toggle-roundup').checked = State.settings.roundupEnabled;
+
+                const activeView = document.querySelector('.view-section.active').id;
+                if(activeView === 'view-analytics') this.renderChart();
+            },
+
+            // Evaluador de Salud Financiera (Regla 50/30/20)
+            renderFinancialHealth() {
+                const totals = State.getTotals();
+                let needs = 0, wants = 0, savings = 0;
+
+                const needsCats = ['Alimentación', 'Hogar y Facturas', 'Transporte', 'Educación'];
+                const wantsCats = ['Ocio', 'Tecnología', 'Otros'];
+
+                State.transactions.forEach(t => {
+                    if (t.type === 'expense') {
+                        if (needsCats.includes(t.category)) needs += t.amount;
+                        else if (wantsCats.includes(t.category)) wants += t.amount;
+                        else if (t.category === 'Ahorro' || t.category === 'Inversión' || t.category === 'Redondeo') savings += t.amount;
+                    }
+                });
+
+                // Evitar división por cero
+                const baseIncome = totals.income > 0 ? totals.income : 1;
+                
+                let pNeeds = Math.min((needs / baseIncome) * 100, 100);
+                let pWants = Math.min((wants / baseIncome) * 100, 100);
+                let pSavings = Math.min((savings / baseIncome) * 100, 100);
+
+                // Update UI Bars (Dashboard)
+                document.getElementById('bar-needs').style.width = `${pNeeds}%`;
+                document.getElementById('bar-wants').style.width = `${pWants}%`;
+                document.getElementById('bar-savings').style.width = `${pSavings}%`;
+
+                // Update List (Analytics View)
+                const ruleList = document.getElementById('rule-50-30-20-list');
+                if (ruleList) {
+                    ruleList.innerHTML = `
+                        <li class="flex justify-between items-center"><span class="text-rose-400 font-medium">Necesidades (Objetivo 50%)</span> <span>${pNeeds.toFixed(1)}% / ${this.formatCur(needs)}</span></li>
+                        <li class="flex justify-between items-center"><span class="text-amber-400 font-medium">Ocio (Objetivo 30%)</span> <span>${pWants.toFixed(1)}% / ${this.formatCur(wants)}</span></li>
+                        <li class="flex justify-between items-center"><span class="text-emerald-400 font-medium">Futuro (Objetivo 20%)</span> <span>${pSavings.toFixed(1)}% / ${this.formatCur(savings)}</span></li>
+                    `;
+                }
+            },
+
+            renderTransactions() {
+                const homeList = document.getElementById('home-transactions-list');
+                const fullList = document.getElementById('full-transactions-list');
+                homeList.innerHTML = ''; fullList.innerHTML = '';
+
+                if(State.transactions.length === 0) {
+                    const empty = '<div class="text-center py-6 text-slate-500 text-sm">No hay operaciones registradas todavía.</div>';
+                    homeList.innerHTML = empty;
+                    fullList.innerHTML = empty;
+                    return;
+                }
+
+                [...State.transactions].reverse().forEach((t, index) => {
+                    const isInc = t.type === 'income';
+                    const html = `
+                        <div class="flex justify-between items-center p-3.5 bg-slate-950/40 border border-slate-800/50 rounded-2xl hover:bg-slate-800/30 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="h-10 w-10 rounded-xl flex items-center justify-center ${isInc ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">
+                                    <i class="fa-solid ${isInc ? 'fa-arrow-down-long' : 'fa-arrow-up-long'}"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-white">${t.concept}</p>
+                                    <p class="text-xs text-slate-400">${t.category}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <span class="font-semibold ${isInc ? 'text-emerald-400' : 'text-white'}">
+                                    ${isInc ? '+' : '-'}${this.formatCur(t.amount)}
+                                </span>
+                                <button onclick="App.deleteTransaction('${t.id}')" class="text-slate-600 hover:text-rose-400 transition-colors p-1 cursor-pointer" title="Eliminar"><i class="fa-solid fa-trash text-xs"></i></button>
+                            </div>
+                        </div>
+                    `;
+                    if(index < 4) homeList.innerHTML += html;
+                    fullList.innerHTML += html;
+                });
+            },
+
+            renderVaults() {
+                const grid = document.getElementById('vaults-grid');
+                grid.innerHTML = '';
+                
+                if (State.vaults.length === 0) {
+                    grid.innerHTML = '<div class="col-span-full text-center py-12 text-slate-500 bg-slate-900 rounded-3xl border border-slate-800/80">No tienes cajas de ahorro creadas.<br>Pulsa el botón superior para añadir tu primer objetivo.</div>';
+                    return;
+                }
+
+                State.vaults.forEach(v => {
+                    const percent = Math.min((v.current / v.target) * 100, 100);
+                    grid.innerHTML += `
+                        <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 shadow-xl relative overflow-hidden group">
+                            <button onclick="App.deleteVault('${v.id}')" class="absolute top-5 right-5 text-slate-600 hover:text-rose-400 transition-colors cursor-pointer"><i class="fa-solid fa-trash text-xs"></i></button>
+                            
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="h-10 w-10 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center"><i class="fa-solid fa-piggy-bank"></i></div>
+                                <button onclick="App.openAddFunds('${v.id}')" class="text-xs bg-slate-800 hover:bg-slate-700 text-white px-3.5 py-2 rounded-full transition-colors border border-slate-700 mr-6 cursor-pointer font-medium">+ Aportar</button>
+                            </div>
+                            <h3 class="font-semibold text-white text-base mb-1 pr-6 truncate">${v.name}</h3>
+                            <div class="flex justify-between text-sm mb-3">
+                                <span class="text-cyan-400 font-semibold">${this.formatCur(v.current)}</span>
+                                <span class="text-slate-500">Meta: ${this.formatCur(v.target)}</span>
+                            </div>
+                            <div class="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                                <div class="bg-gradient-to-r from-indigo-500 to-cyan-400 h-full rounded-full transition-all duration-700" style="width: ${percent}%"></div>
+                            </div>
+                        </div>
+                    `;
+                });
+            },
+
+            renderInvestments() {
+                const container = document.getElementById('invest-markets');
+                container.innerHTML = '';
+                
+                let totalCurrent = 0;
+                let totalInvested = 0;
+
+                State.investments.forEach(i => {
+                    totalCurrent += i.current;
+                    totalInvested += i.invested;
+
+                    let profitVal = i.current - i.invested;
+                    let profitPct = i.invested > 0 ? (profitVal / i.invested) * 100 : 0;
+                    let isPositive = profitVal >= 0;
+                    let sign = isPositive && profitPct > 0 ? '+' : '';
+                    let badgeClass = i.invested > 0 
+                        ? (isPositive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400')
+                        : 'bg-slate-800 text-slate-400';
+
+                    container.innerHTML += `
+                        <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 hover:border-slate-700 transition-colors shadow-lg flex flex-col justify-between h-full">
+                            <div>
+                                <div class="flex justify-between items-start mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="h-10 w-10 rounded-full ${i.bg} ${i.color} flex items-center justify-center"><i class="${i.icon} text-lg"></i></div>
+                                        <div>
+                                            <h4 class="font-bold text-white leading-tight">${i.symbol}</h4>
+                                            <span class="text-xs text-slate-400 font-medium">${i.name}</span>
+                                        </div>
+                                    </div>
+                                    <div class="px-2 py-1 rounded-md text-xs font-bold ${badgeClass}">
+                                        ${i.invested > 0 ? `${sign}${profitPct.toFixed(2)}%` : '0.00%'}
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-end mb-5">
+                                    <div>
+                                        <p class="text-xs text-slate-500 mb-0.5">Valor Actual</p>
+                                        <div class="text-xl font-bold text-white">${this.formatCur(i.current)}</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-xs text-slate-500 mb-0.5">Invertido</p>
+                                        <div class="text-sm font-medium text-slate-300">${this.formatCur(i.invested)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 mt-auto">
+                                <button onclick="App.openInvestModal('${i.id}', 'buy')" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 rounded-lg transition-colors cursor-pointer">Comprar</button>
+                                <button onclick="App.openInvestModal('${i.id}', 'sell')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold py-2.5 rounded-lg transition-colors cursor-pointer border border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed" ${i.current <= 0 ? 'disabled' : ''}>Vender</button>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                let globalProfit = totalCurrent - totalInvested;
+                let globalProfitPct = totalInvested > 0 ? (globalProfit / totalInvested) * 100 : 0;
+                let globIsPos = globalProfit >= 0;
+
+                document.getElementById('invest-total').textContent = this.formatCur(totalCurrent);
+                document.getElementById('invest-capital').textContent = this.formatCur(totalInvested);
+                
+                const profitEl = document.getElementById('invest-profit');
+                profitEl.textContent = `${globIsPos && totalInvested > 0 ? '+' : ''}${this.formatCur(globalProfit)} (${globIsPos && totalInvested > 0 ? '+' : ''}${globalProfitPct.toFixed(2)}%)`;
+                profitEl.className = `font-medium ${globIsPos ? 'text-emerald-400' : 'text-rose-400'}`;
+
+                this.renderPortfolioChart();
+            },
+
+            renderPortfolioChart() {
+                const canvas = document.getElementById('portfolioChart');
+                if(!canvas) return;
+                
+                const activeAssets = State.investments.filter(i => i.current > 0);
+                const labels = activeAssets.length > 0 ? activeAssets.map(i => i.symbol) : ['Sin Inversiones'];
+                const data = activeAssets.length > 0 ? activeAssets.map(i => i.current) : [1];
+                
+                const colorPalette = ['#34d399', '#fbbf24', '#94a3b8', '#60a5fa', '#facc15', '#a78bfa'];
+                const bgColors = activeAssets.length > 0 ? activeAssets.map((_, idx) => colorPalette[idx % colorPalette.length]) : ['#1e293b'];
+
+                if (State.investChartInstance) State.investChartInstance.destroy();
+                State.investChartInstance = new Chart(canvas.getContext('2d'), {
+                    type: 'doughnut',
+                    data: { labels: labels, datasets: [{ data: data, backgroundColor: bgColors, borderWidth: 0 }] },
+                    options: { 
+                        responsive: true, maintainAspectRatio: false, cutout: '75%', 
+                        plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 } } }, tooltip: { enabled: activeAssets.length > 0 } } 
+                    }
+                });
+            },
+
+            renderChart() {
+                const canvas = document.getElementById('expensesChart');
+                if(!canvas) return;
+                
+                // Excluir Ahorros/Inversiones para no ensuciar el gráfico de consumo puro
+                const expenses = State.transactions.filter(t => t.type === 'expense' && t.category !== 'Ahorro' && t.category !== 'Inversión' && t.category !== 'Redondeo');
+                const dataMap = {};
+                expenses.forEach(e => dataMap[e.category] = (dataMap[e.category] || 0) + e.amount);
+
+                const hasData = Object.keys(dataMap).length > 0;
+                const labels = hasData ? Object.keys(dataMap) : ['Sin gastos registrados'];
+                const data = hasData ? Object.values(dataMap) : [1];
+                const bgColors = hasData ? ['#6366f1', '#22d3ee', '#ec4899', '#f59e0b', '#10b981', '#8b5cf6'] : ['#1e293b'];
+
+                if (State.chartInstance) State.chartInstance.destroy();
+                State.chartInstance = new Chart(canvas.getContext('2d'), {
+                    type: 'doughnut',
+                    data: { labels: labels, datasets: [{ data: data, backgroundColor: bgColors, borderWidth: 0 }] },
+                    options: { 
+                        responsive: true, maintainAspectRatio: false, cutout: '75%', 
+                        plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 } } }, tooltip: { enabled: hasData } } 
+                    }
+                });
+            }
+        };
+
+        // --- CONTROLADORES Y EVENTOS ---
+        const App = {
+            init() {
+                this.bindNavigation();
+                this.bindModals();
+                this.bindForms();
+                this.bindToggles();
+                UI.renderAll();
+            },
+
+            updateUI() { UI.renderAll(); },
+
+            bindNavigation() {
+                document.querySelectorAll('.nav-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const target = e.currentTarget;
+                        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                        target.classList.add('active');
+                        
+                        const targetId = target.dataset.target;
+                        document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
+                        document.getElementById(targetId).classList.add('active');
+
+                        if (targetId === 'view-analytics') UI.renderChart();
+                        if (targetId === 'view-invest') UI.renderPortfolioChart();
+                    });
+                });
+
+                document.getElementById('go-to-analytics').addEventListener('click', () => {
+                    document.querySelector('[data-target="view-analytics"]').click();
+                });
+            },
+
+            bindModals() {
+                const txModal = document.getElementById('transaction-modal');
+                const vaultModal = document.getElementById('vault-modal');
+                const fundsModal = document.getElementById('add-funds-modal');
+                const investModal = document.getElementById('invest-modal');
+
+                document.getElementById('open-tx-modal').addEventListener('click', () => txModal.showModal());
+                document.getElementById('close-tx-modal').addEventListener('click', () => txModal.close());
+                document.getElementById('open-vault-modal').addEventListener('click', () => vaultModal.showModal());
+                document.getElementById('close-vault-modal').addEventListener('click', () => vaultModal.close());
+                document.getElementById('close-funds-modal').addEventListener('click', () => fundsModal.close());
+                document.getElementById('close-invest-modal').addEventListener('click', () => investModal.close());
+
+                [txModal, vaultModal, fundsModal, investModal].forEach(modal => {
+                    modal.addEventListener('click', (e) => {
+                        const rect = modal.getBoundingClientRect();
+                        if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) modal.close();
+                    });
+                });
+            },
+
+            bindToggles() {
+                document.getElementById('toggle-roundup').addEventListener('change', (e) => {
+                    if (e.target.checked && State.vaults.length === 0) {
+                        alert("Debes crear al menos una Caja de Ahorro para activar el redondeo automático.");
+                        e.target.checked = false;
+                        return;
+                    }
+                    State.settings.roundupEnabled = e.target.checked;
+                    State.save();
+                });
+            },
+
+            bindForms() {
+                // Selector Dinámico de Ingreso/Gasto
+                document.querySelectorAll('input[name="tx-type"]').forEach(radio => {
+                    radio.addEventListener('change', (e) => {
+                        const wrapper = document.getElementById('tx-category-wrapper');
+                        e.target.value === 'income' ? wrapper.classList.add('hidden') : wrapper.classList.remove('hidden');
+                    });
+                });
+
+                // Botones Rellenado Rápido
+                document.querySelectorAll('.quick-fill-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const { type, concept, category, amount } = e.currentTarget.dataset;
+                        document.querySelector(`input[name="tx-type"][value="${type}"]`).click();
+                        document.getElementById('tx-concept').value = concept;
+                        document.getElementById('tx-amount').value = amount;
+                        if(type === 'expense') document.getElementById('tx-category').value = category;
+                    });
+                });
+
+                // Guardar Transacción y Procesar Redondeo
+                document.getElementById('form-transaction').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const type = document.querySelector('input[name="tx-type"]:checked').value;
+                    const concept = document.getElementById('tx-concept').value.trim();
+                    const amount = parseFloat(document.getElementById('tx-amount').value);
+                    const category = type === 'income' ? 'Ingreso' : document.getElementById('tx-category').value;
+                    
+                    State.transactions.push({ id: generateSafeID(), type, concept, amount, category, date: new Date().toISOString() });
+                    
+                    // Lógica Redondeo Automático
+                    if (type === 'expense' && State.settings.roundupEnabled && State.vaults.length > 0) {
+                        if (amount % 1 !== 0) {
+                            const change = parseFloat((Math.ceil(amount) - amount).toFixed(2));
+                            if (change > 0 && change <= State.getTotals().balance) {
+                                const targetVault = State.vaults[0];
+                                targetVault.current += change;
+                                State.transactions.push({
+                                    id: generateSafeID(), type: 'expense', concept: `Redondeo: ${concept}`, 
+                                    amount: change, category: 'Redondeo', date: new Date().toISOString()
+                                });
+                            }
+                        }
+                    }
+
+                    State.save();
+                    document.getElementById('form-transaction').reset();
+                    document.querySelector('input[name="tx-type"][value="expense"]').checked = true;
+                    document.getElementById('tx-category-wrapper').classList.remove('hidden');
+                    document.getElementById('transaction-modal').close();
+                });
+
+                // Crear Caja de Ahorro
+                document.getElementById('form-vault').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    State.vaults.push({ id: generateSafeID(), name: document.getElementById('v-name').value.trim(), target: parseFloat(document.getElementById('v-target').value), current: 0 });
+                    State.save();
+                    document.getElementById('form-vault').reset();
+                    document.getElementById('vault-modal').close();
+                });
+
+                // Añadir Fondos a Caja
+                document.getElementById('form-add-funds').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const vId = document.getElementById('fund-vault-id').value;
+                    const amount = parseFloat(document.getElementById('fund-amount').value);
+                    
+                    if (amount > State.getTotals().balance) { alert("No tienes suficiente saldo disponible."); return; }
+
+                    const vault = State.vaults.find(v => v.id === vId);
+                    if (vault) {
+                        vault.current += amount;
+                        State.transactions.push({ id: generateSafeID(), type: 'expense', concept: `Ahorro: ${vault.name}`, amount: amount, category: 'Ahorro', date: new Date().toISOString() });
+                        State.save();
+                    }
+                    document.getElementById('form-add-funds').reset();
+                    document.getElementById('add-funds-modal').close();
+                });
+
+                // Inversiones
+                document.getElementById('form-invest').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const assetId = document.getElementById('inv-asset-id').value;
+                    const operation = document.getElementById('inv-operation').value;
+                    const amount = parseFloat(document.getElementById('inv-amount').value);
+                    const asset = State.investments.find(i => i.id === assetId);
+                    
+                    if (!asset) return;
+
+                    if (operation === 'buy') {
+                        if (amount > State.getTotals().balance) { alert("Saldo insuficiente."); return; }
+                        asset.invested += amount;
+                        asset.current += amount;
+                        State.transactions.push({ id: generateSafeID(), type: 'expense', concept: `Inversión: Compra ${asset.symbol}`, amount: amount, category: 'Inversión', date: new Date().toISOString() });
+                    } else if (operation === 'sell') {
+                        if (amount > asset.current) { alert("El importe supera el valor actual."); return; }
+                        const proportion = amount / asset.current;
+                        asset.invested -= (asset.invested * proportion);
+                        asset.current -= amount;
+                        if(asset.current < 0.01) { asset.current = 0; asset.invested = 0; }
+                        State.transactions.push({ id: generateSafeID(), type: 'income', concept: `Inversión: Venta ${asset.symbol}`, amount: amount, category: 'Inversión', date: new Date().toISOString() });
+                    }
+                    
+                    State.save();
+                    document.getElementById('form-invest').reset();
+                    document.getElementById('invest-modal').close();
+                });
+            },
+
+            openAddFunds(vaultId) {
+                document.getElementById('fund-vault-id').value = vaultId;
+                document.getElementById('add-funds-modal').showModal();
+            },
+
+            openInvestModal(assetId, operation) {
+                const asset = State.investments.find(i => i.id === assetId);
+                if(!asset) return;
+
+                document.getElementById('inv-asset-id').value = assetId;
+                document.getElementById('inv-operation').value = operation;
+                
+                const title = document.getElementById('invest-modal-title');
+                const desc = document.getElementById('invest-modal-desc');
+                const btn = document.getElementById('invest-submit-btn');
+                const balanceStr = document.getElementById('invest-modal-balance');
+                const inputAmount = document.getElementById('inv-amount');
+                
+                inputAmount.value = '';
+
+                if(operation === 'buy') {
+                    title.textContent = `Comprar ${asset.name}`;
+                    desc.textContent = `Asigna fondos desde tu cuenta para invertir en ${asset.symbol}.`;
+                    btn.textContent = 'Confirmar Compra';
+                    btn.className = "w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl py-3 transition-colors mt-2 cursor-pointer shadow-lg shadow-indigo-600/30";
+                    balanceStr.textContent = UI.formatCur(State.getTotals().balance);
+                    inputAmount.max = State.getTotals().balance;
+                } else {
+                    title.textContent = `Vender ${asset.name}`;
+                    desc.textContent = `Liquida parte o todo tu activo en ${asset.symbol}.`;
+                    btn.textContent = 'Confirmar Venta';
+                    btn.className = "w-full bg-emerald-500 hover:bg-emerald-400 text-white font-semibold rounded-xl py-3 transition-colors mt-2 cursor-pointer shadow-lg shadow-emerald-500/30";
+                    balanceStr.textContent = UI.formatCur(asset.current);
+                    inputAmount.max = asset.current;
+                }
+                document.getElementById('invest-modal').showModal();
+            },
+
+            simulateMarket() {
+                let hasInvestments = false;
+                State.investments.forEach(i => {
+                    if(i.current > 0) {
+                        hasInvestments = true;
+                        const change = (Math.random() * 0.10) - 0.04;
+                        i.current = i.current * (1 + change);
+                        if(i.current < 0) i.current = 0;
+                    }
+                });
+
+                if(hasInvestments) {
+                    State.save(); 
+                    const btn = document.querySelector('button[onclick="App.simulateMarket()"]');
+                    const ogHtml = btn.innerHTML;
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i> Actualizado';
+                    btn.classList.add('bg-emerald-500');
+                    setTimeout(() => { btn.innerHTML = ogHtml; btn.classList.remove('bg-emerald-500'); }, 1500);
+                } else {
+                    alert("Aún no tienes activos invertidos.");
+                }
+            },
+
+            deleteTransaction(id) {
+                if(confirm('¿Estás seguro de eliminar este movimiento?')) {
+                    State.transactions = State.transactions.filter(t => t.id !== id);
+                    State.save();
+                }
+            },
+
+            deleteVault(id) {
+                if(confirm('¿Eliminar esta caja de ahorro?')) {
+                    State.vaults = State.vaults.filter(v => v.id !== id);
+                    State.save();
+                }
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => App.init());
+    </script>
+</body>
+</html>
